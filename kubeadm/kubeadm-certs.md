@@ -1,12 +1,12 @@
 
 ##  主要是cert证书的流程Phase 添加
 
-initRunner.AppendPhase(phases.NewCertsPhase()) 
+```initRunner.AppendPhase(phases.NewCertsPhase()) ```
 
 
 ## 实例化一个workflowPhase, 主要调用的Phase ==>>  newCertSubPhases()
 
-// NewCertsPhase returns the phase for the certs 
+```// NewCertsPhase returns the phase for the certs 
 func NewCertsPhase() workflow.Phase {
    return workflow.Phase{
       Name:   "certs",
@@ -16,13 +16,12 @@ func NewCertsPhase() workflow.Phase {
       Long:   cmdutil.MacroCommandLongDescription,
    }
 }
-
-
-
+```
 ## newCertSubPhases() 子流程的具体过程
 * newCertSubPhases() 主要是基于certsphase.GetDefaultCertList() 获取默认证书列表，然后根据证书是否包含CA的name来分别调用runCAPhase()，runCertPhase() 两个不同的接口生成证书。
 * runCAPhase(cert) 主要是用于生成一些根证书，这些证书的年限是10年
 * runCertPhase(cert) 主要是生成一些server证书，这些证书的年限是1年
+```
 // newCertSubPhases returns sub phases for certs phase
 func newCertSubPhases() []workflow.Phase {
    subPhases := []workflow.Phase{}
@@ -40,21 +39,20 @@ func newCertSubPhases() []workflow.Phase {
    // This loop assumes that GetDefaultCertList() always returns a list of
    // certificate that is preceded by the CAs that sign them.
    var lastCACert *certsphase.KubeadmCert
-
-## GetDefaultCertList() 获取需要创建的Default的证书列表， 然后依次的创建该证书。
-
+```
+   // GetDefaultCertList() 获取需要创建的Default的证书列表， 然后依次的创建该证书。
+```
    for _, cert := range certsphase.GetDefaultCertList() {
       var phase workflow.Phase
       if cert.CAName == "" {
          phase = newCertSubPhase(cert, runCAPhase(cert))  ## runCAPhase(cert) 主要是用于生成一些根证书，这些证书的年限是10年
          lastCACert = cert
       } else {
-         phase = newCertSubPhase(cert, runCertPhase(cert, lastCACert))  ## runCertPhase(cert) 主要是生成一些server证书，这些证书的年限是1年
+         phase = newCertSubPhase(cert, runCertPhase(cert, lastCACert)) //  runCertPhase(cert) 主要是生成一些server证书，这些证书的年限是1年
          phase.LocalFlags = localFlags()
       }
       subPhases = append(subPhases, phase)
    }
-
 
    // SA creates the private/public key pair, which doesn't use x509 at all
    saPhase := workflow.Phase{
@@ -70,22 +68,17 @@ func newCertSubPhases() []workflow.Phase {
    return subPhases
 }
 
-
-
+```
 ## 默认证书列表：默认证书包括： CA根证书， APIServer 证书， FrontProxy 证书， Etcd 证书。
-
+```
 func GetDefaultCertList() Certificates {
    return Certificates{
       &KubeadmCertRootCA,
       &KubeadmCertAPIServer,
       &KubeadmCertKubeletClient,
-
-
       // Front Proxy certs
       &KubeadmCertFrontProxyCA,
       &KubeadmCertFrontProxyClient,
-
-
       // etcd certs
       &KubeadmCertEtcdCA,
       &KubeadmCertEtcdServer,
@@ -94,27 +87,24 @@ func GetDefaultCertList() Certificates {
       &KubeadmCertEtcdAPIClient,
    }
 }
-
+```
 ## runCAPhase() 生成根证书的主要流程如下:
-
+```
 func runCAPhase(ca *certsphase.KubeadmCert) func(c workflow.RunData) error {
    return func(c workflow.RunData) error {
       data, ok := c.(InitData)
       if !ok {
          return errors.New("certs phase invoked with an invalid data struct")
-      }
-## 通过kubeadm.conf 获取信息，判断ca.Name是不是etcd-ca,如果是就直接跳过
+      }  //  通过kubeadm.conf 获取信息，判断ca.Name是不是etcd-ca,如果是就直接跳过
       // if using external etcd, skips etcd certificate authority generation
       if data.Cfg().Etcd.External != nil && ca.Name == "etcd-ca" {
          fmt.Printf("[certs] External etcd mode: Skipping %s certificate authority generation\n", ca.BaseName)
          return nil
       }
-
-## 直接从节点Load一次证书，并且判断证书是否过期，合法。
-## 如果有证书文件，再继续判断私钥是否存在，并且校验合法性。
-
-## 即： （1）有证书且合法，不管有没有Key 都是直接返回,不在生成新的证书与Key。
-##      （2）没有证书，或证书不合法，就需要生成新的证书，往下走
+ // 直接从节点Load一次证书，并且判断证书是否过期，合法。
+ // 如果有证书文件，再继续判断私钥是否存在，并且校验合法性。
+ // 即： （1）有证书且合法，不管有没有Key 都是直接返回,不在生成新的证书与Key。
+ //     （2）没有证书，或证书不合法，就需要生成新的证书，往下走
       if _, err := pkiutil.TryLoadCertFromDisk(data.CertificateDir(), ca.BaseName); err == nil {
          if _, err := pkiutil.TryLoadKeyFromDisk(data.CertificateDir(), ca.BaseName); err == nil {
             fmt.Printf("[certs] Using existing %s certificate authority\n", ca.BaseName)
@@ -130,13 +120,12 @@ func runCAPhase(ca *certsphase.KubeadmCert) func(c workflow.RunData) error {
       cfg.CertificatesDir = data.CertificateWriteDir()
       defer func() { cfg.CertificatesDir = data.CertificateDir() }()
 
-## 创建新的证书与Key
+      // 创建新的证书与Key
       // create the new certificate authority (or use existing)
       return certsphase.CreateCACertAndKeyFiles(ca, cfg)
    }
 }
- 
-## certsphase.CreateCACertAndKeyFiles() 主要就是创建CA证书与Key
+// certsphase.CreateCACertAndKeyFiles() 主要就是创建CA证书与Key
 // CreateCACertAndKeyFiles generates and writes out a given certificate authority.
 // The certSpec should be one of the variables from this package.
 func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmapi.InitConfiguration) error {
@@ -150,7 +139,7 @@ func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmapi.InitConfigur
       return err
    }
 
-## NewCertificateAuthority() 就是生成caCert证书 + caKey 
+   // NewCertificateAuthority() 就是生成caCert证书 + caKey 
    caCert, caKey, err := pkiutil.NewCertificateAuthority(certConfig)
    if err != nil {
       return err
@@ -163,11 +152,12 @@ func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmapi.InitConfigur
       caKey,
    )
 }
-
-## NewCertificateAuthority
+```
+ ## NewCertificateAuthority
 （1）调用NewPrivateKey() 生成x509的一个私钥Key
 （2）调用NewSelfSignedCACert（）生成x509的一个根证书
-// NewCertificateAuthority creates new certificate and private key for the certificate authority
+```
+ // NewCertificateAuthority creates new certificate and private key for the certificate authority
 func NewCertificateAuthority(config *CertConfig) (*x509.Certificate, crypto.Signer, error) {
    key, err := NewPrivateKey(config.PublicKeyAlgorithm)
    if err != nil {
@@ -182,10 +172,11 @@ func NewCertificateAuthority(config *CertConfig) (*x509.Certificate, crypto.Sign
 
    return cert, key, nil
 }
-
-## NewSelfSignedCACert（）
+ ```
+ ## NewSelfSignedCACert（）
 （1）生成证书的包含一个 duration365d * 10 的期限：即10年的期限。
-// NewSelfSignedCACert creates a CA certificate
+```
+ // NewSelfSignedCACert creates a CA certificate
 func NewSelfSignedCACert(cfg Config, key crypto.Signer) (*x509.Certificate, error) {
    now := time.Now()
    tmpl := x509.Certificate{
@@ -209,7 +200,7 @@ func NewSelfSignedCACert(cfg Config, key crypto.Signer) (*x509.Certificate, erro
    return x509.ParseCertificate(certDERBytes)
 }
 
-## runCertPhase() 生成server证书的流程与上面基本一致，就是证书的期限不是10年，而是1年。具体代码如下：
+// runCertPhase() 生成server证书的流程与上面基本一致，就是证书的期限不是10年，而是1年。具体代码如下：
 // NewSignedCert creates a signed certificate using the given CA certificate and key
 func NewSignedCert(cfg *CertConfig, key crypto.Signer, caCert *x509.Certificate, caKey crypto.Signer) (*x509.Certificate, error) {
    serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).SetInt64(math.MaxInt64))
@@ -234,10 +225,8 @@ func NewSignedCert(cfg *CertConfig, key crypto.Signer, caCert *x509.Certificate,
       IPAddresses:  cfg.AltNames.IPs,
       SerialNumber: serial,
       NotBefore:    caCert.NotBefore,
-##
-## // CertificateValidity defines the validity for all the signed certificates generated by kubeadm
-## 因为 CertificateValidity = time.Hour * 24 * 365， 所以是356 day 
-##
+// CertificateValidity defines the validity for all the signed certificates generated by kubeadm
+// 因为 CertificateValidity = time.Hour * 24 * 365， 所以是356 day 
       NotAfter:     time.Now().Add(kubeadmconstants.CertificateValidity).UTC(),  
       KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
       ExtKeyUsage:  cfg.Usages,
