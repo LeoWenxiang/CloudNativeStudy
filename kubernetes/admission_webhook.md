@@ -1,13 +1,9 @@
-![c20137a039cf8577f0050b5cc7a8a220.png](evernotecid://3E503F2F-F390-477A-988E-121040092618/appyinxiangcom/30378301/ENResource/p85)
 ## 什么是准入 Webhook？
 准入 Webhook 是一种用于接收准入请求并对其进行处理的 HTTP 回调机制。 可以定义两种类型的准入 webhook，即 验证性质的准入 Webhook 和 修改性质的准入 Webhook。 修改性质的准入 Webhook 会先被调用。它们可以更改发送到 API 服务器的对象以执行自定义的设置默认值操作。
 
 在完成了所有对象修改并且 API 服务器也验证了所传入的对象之后， 验证性质的 Webhook 会被调用，并通过拒绝请求的方式来强制实施自定义的策略。
-
+![admission_webhook.png](images)
 > 说明： 如果准入 Webhook 需要保证它们所看到的是对象的最终状态以实施某种策略。 则应使用验证性质的准入 Webhook，因为对象被修改性质 Webhook 看到之后仍然可能被修改。
----
-----
-***
 ****
 ## ValidatingWebhookConfiguration 配置
 ```
@@ -218,4 +214,4 @@ webhooks:
   ...
 ```
 
-
+### 
